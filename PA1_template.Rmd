@@ -1,0 +1,74 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data
+```{r}
+fle <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+file <- "Project.zip"
+download.file(fle,file,method = "auto")
+unzip(file)
+
+activity <- read.csv("activity.csv",sep = ",",header = T)
+```
+
+## What is mean total number of steps taken per day?
+```{r}
+Steps <- tapply(activity$steps,activity$date,sum)
+hist(Steps,xlab = "Number of Steps",main = "Histogram: Steps per day")
+```
+
+
+## What is the average daily activity pattern?
+```{r}
+Avg <- mean(Steps,na.rm = T)
+Mid <- median(Steps,na.rm = T)
+
+StepsInt <- tapply(activity$steps,activity$interval,mean,na.rm=T)
+plot(as.numeric(StepsInt),xlab="Interval",ylab="Steps",main="Average Daily Activity Pattern",type="l")
+```
+
+## Inputing missing values
+```{r}
+MaxInt <- names(sort(StepsInt,decreasing = T)[1])     
+MaxStep <- sort(StepsInt,decreasing = T)[1]
+
+nAVals <- sum(is.na(activity$steps))
+
+index <- which(is.na(activity$steps))
+l <- length(index)
+avg_step <- with(activity,tapply(steps,date,mean,na.rm=T))
+na <- mean(Avg,na.rm = T)
+for (i in 1:l) {
+  activity[index[i],1]<-na
+}
+
+
+new_steps <-with(activity,tapply(steps,date,sum,na.rm=TRUE))
+hist(new_steps,xlab = "Steps",ylab = "Frequency",main = "Steps per day")
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+library(ggplot2)
+activity$date <- as.Date(activity$date)
+activity$date <- strptime(paste(activity$date),format = "%Y-%m-%d",tz="UTC")
+activity$weekday <- paste(weekdays(activity$date))
+
+activity$weekday <- ifelse(weekdays(activity$date)=="Saturday"|weekdays(activity$date)=="Sunday","Weekend","Weekday")
+
+actstepsmean <- aggregate(activity$steps,by=list(activity$weekday,activity$interval),mean,na.rm=T)
+actstepsmed <-  aggregate(activity$steps,by=list(activity$weekday,activity$interval),median,na.rm=T)
+
+actstp <- cbind(actstepsmean[],actstepsmed$x)
+names(actstp) <- c("Weekday","Interval","mean","Median")
+actstp$mean <- round(actstp$mean)
+actstp$Median <- round(actstp$Median)
+ggplot(actstp, aes(x = Interval, y = mean)) + ylab("Number of Steps") + geom_line() + facet_grid(Weekday~.)
+
+```
+
